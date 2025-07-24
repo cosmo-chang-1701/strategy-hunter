@@ -23,6 +23,18 @@ class MarketIndex(BaseModel):
     change: float
     change_percent: float
 
+class StockQuote(BaseModel):
+    symbol: str
+    name: str
+    price: float
+    change: float
+    change_percent: float
+    day_low: float
+    day_high: float
+    year_low: float
+    year_high: float
+    volume: int
+
 # 3. 建立 API 端點
 @app.get("/api/v1/market-overview", response_model=List[MarketIndex])
 async def get_market_overview():
@@ -69,6 +81,50 @@ async def get_market_overview():
         )
         
     return market_overview
+
+@app.get("/api/v1/stocks/{ticker}/quote", response_model=StockQuote)
+async def get_stock_quote(ticker: str):
+    """
+    獲取指定股票的即時報價與基本數據。
+    - **ticker**: 股票代碼 (例如: AAPL, TSLA)
+    """
+    api_key = os.getenv("FMP_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="FMP_API_KEY not found.")
+
+    # FMP 的報價 API
+    url = f"https://financialmodelingprep.com/api/v3/quote/{ticker.upper()}?apikey={api_key}"
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(url)
+            response.raise_for_status()
+            data = response.json()
+            
+            # FMP API 即使查詢單一股票也可能回傳列表，且列表可能為空
+            if not data:
+                raise HTTPException(status_code=404, detail=f"Stock ticker '{ticker}' not found.")
+            
+            stock_data = data[0]
+
+        except httpx.RequestError as exc:
+            raise HTTPException(status_code=503, detail=f"Error while requesting from FMP API: {exc}")
+        except httpx.HTTPStatusError as exc:
+            raise HTTPException(status_code=exc.response.status_code, detail=f"FMP API returned an error: {exc.response.text}")
+
+    # 將 FMP 回傳的資料轉換為我們的 StockQuote 格式
+    return StockQuote(
+        symbol=stock_data.get("symbol"),
+        name=stock_data.get("name"),
+        price=stock_data.get("price"),
+        change=stock_data.get("change"),
+        change_percent=stock_data.get("changesPercentage"),
+        day_low=stock_data.get("dayLow"),
+        day_high=stock_data.get("dayHigh"),
+        year_low=stock_data.get("yearLow"),
+        year_high=stock_data.get("yearHigh"),
+        volume=stock_data.get("volume")
+    )
 
 @app.get("/")
 async def read_root():
