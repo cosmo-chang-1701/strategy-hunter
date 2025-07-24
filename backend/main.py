@@ -126,6 +126,37 @@ async def get_stock_quote(ticker: str):
         volume=stock_data.get("volume")
     )
 
+@app.get("/api/v1/stocks/{ticker}/options/expirations", response_model=List[str])
+async def get_option_expirations(ticker: str):
+    """
+    獲取指定股票所有可用的選擇權到期日列表。
+    數據來源：Polygon.io
+    """
+    api_key = os.getenv("POLYGON_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="POLYGON_API_KEY not found.")
+
+    # Polygon.io 的選擇權合約查詢 API
+    # 我們查詢所有合約並從中提取出不重複的到期日
+    url = f"https://api.polygon.io/v3/reference/options/contracts?underlying_ticker={ticker.upper()}&limit=1000&apiKey={api_key}"
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(url)
+            response.raise_for_status()
+            data = response.json()
+        except httpx.RequestError as exc:
+            raise HTTPException(status_code=503, detail=f"Error requesting from Polygon API: {exc}")
+        except httpx.HTTPStatusError as exc:
+            raise HTTPException(status_code=exc.response.status_code, detail=f"Polygon API error: {exc.response.text}")
+    
+    # 從回傳的合約列表中，整理出所有不重複的到期日
+    # 使用 set 可以自動去除重複的日期
+    expirations = {contract["expiration_date"] for contract in data.get("results", [])}
+    
+    # 將 set 轉換為 list 並排序後回傳
+    return sorted(list(expirations))
+
 @app.get("/")
 async def read_root():
     return {"message": "歡迎使用美股選擇權分析平台 API"}
