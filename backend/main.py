@@ -1,15 +1,38 @@
 import os
 import httpx
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 from dotenv import load_dotenv
 import asyncio
 from datetime import date, timedelta
+from contextlib import asynccontextmanager
+
+# --- 計算模組 ---
 from volatility_calculator import calculate_hv, calculate_iv_indicators
+from strategy_analyzer import analyze_strategy as perform_strategy_analysis, OptionLeg
 
 # 在應用程式啟動時，載入 .env 檔案中的環境變數
 load_dotenv()
+
+# --- 應用程式狀態管理 ---
+# 我們將使用一個簡單的字典來儲存應用程式的狀態，例如 API 的可用性
+app_state = {}
+
+# --- FastAPI 生命週期管理器 ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("INFO:     Application startup...")
+    print("INFO:     Performing Polygon.io v3 options access check...")
+    app_state["polygon_options_accessible"] = await check_polygon_options_access()
+    if app_state["polygon_options_accessible"]:
+        print("INFO:     Polygon.io v3 options snapshot access: VERIFIED")
+    else:
+        print("WARNING:  Polygon.io v3 options snapshot access: FAILED. Option chain will use mock data.")
+    yield
+    print("INFO:     Application shutdown.")
+    app_state.clear()
+
 
 # 1. 建立 FastAPI 應用程式實例
 app = FastAPI(
@@ -54,6 +77,7 @@ class OptionContract(BaseModel):
     is_itm: bool # 是否為價內
 
 class OptionChain(BaseModel):
+    isMock: bool = False
     underlying_price: float
     calls: List[OptionContract]
     puts: List[OptionContract]
@@ -72,7 +96,56 @@ class VolatilityAnalysis(BaseModel):
     iv_52_week_low: Optional[float] = None
     chart_data: List[VolatilityDataPoint]
 
+# OptionLeg is now imported from strategy_analyzer to ensure type consistency.
+
+class StrategyDefinition(BaseModel):
+    legs: List[OptionLeg]
+
+class PLDataPoint(BaseModel):
+    price_at_expiration: float
+    profit_loss: float
+
+class AnalyzedStrategy(BaseModel):
+    max_profit: Optional[float]
+    max_loss: Optional[float]
+    breakeven_points: List[float]
+    net_cost: float
+    position_delta: float
+    position_gamma: float
+    position_theta: float
+    position_vega: float
+    pl_chart_data: List[PLDataPoint]
+
 # 3. 建立 API 端點
+# --- API 健康檢查函式 ---
+async def check_polygon_options_access() -> bool:
+    """
+    在啟動時執行，檢查 Polygon API 金鑰是否能存取選擇權快照。
+    返回 True 代表權限正常，False 代表權限不足或發生錯誤。
+    """
+    api_key = os.getenv("POLYGON_API_KEY")
+    if not api_key:
+        return False
+
+    # 我們用一個高流通性的 SPY ETF 及其選擇權作為測試對象
+    # O:SPY250815C00550000 是一個 SPY 2025/08/15 到期，$550 的 Call
+    test_tickers = "SPY,O:SPY250815C00550000"
+    url = f"https://api.polygon.io/v3/snapshot?ticker.any_of={test_tickers}&apiKey={api_key}"
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, timeout=10.0)
+            if response.status_code == 200:
+                # 檢查回傳的 tickers 中是否真的包含我們的選擇權 ticker
+                data = response.json()
+                for item in data.get('results', []):
+                    if item.get('ticker') == 'O:SPY250815C00550000' and not item.get('error'):
+                        return True # 找到選擇權且沒有錯誤
+            return False
+    except Exception as e:
+        print(f"ERROR during Polygon access check: {e}")
+        return False
+
 @app.get("/api/v1/market-overview", response_model=List[MarketIndex])
 async def get_market_overview():
     """
@@ -201,6 +274,23 @@ async def get_option_chain(ticker: str, expiration_date: str):
     - **ticker**: 股票代碼 (e.g., AAPL)
     - **expiration_date**: 選擇權到期日 (格式: YYYY-MM-DD)
     """
+    # Mock data 模式
+    if not app_state.get("polygon_options_accessible", False):
+        print("INFO: Operating in 'mock' mode. Returning mock option chain data.")
+        underlying_price = 215.50
+        mock_calls = [
+            OptionContract(strike_price=210.0, contract_type='call', bid=7.50, ask=7.60, last_price=7.55, volume=150, open_interest=1200, implied_volatility=0.28, delta=0.65, gamma=0.05, theta=-0.12, vega=0.35, is_itm=True),
+            OptionContract(strike_price=215.0, contract_type='call', bid=4.20, ask=4.25, last_price=4.22, volume=350, open_interest=2500, implied_volatility=0.27, delta=0.51, gamma=0.07, theta=-0.15, vega=0.40, is_itm=True),
+            OptionContract(strike_price=220.0, contract_type='call', bid=2.10, ask=2.15, last_price=2.13, volume=280, open_interest=1800, implied_volatility=0.26, delta=0.35, gamma=0.06, theta=-0.14, vega=0.38, is_itm=False),
+        ]
+        mock_puts = [
+            OptionContract(strike_price=210.0, contract_type='put', bid=2.80, ask=2.85, last_price=2.83, volume=180, open_interest=1500, implied_volatility=0.28, delta=-0.38, gamma=0.06, theta=-0.13, vega=0.36, is_itm=False),
+            OptionContract(strike_price=215.0, contract_type='put', bid=4.80, ask=4.90, last_price=4.85, volume=320, open_interest=2200, implied_volatility=0.27, delta=-0.49, gamma=0.07, theta=-0.15, vega=0.40, is_itm=False),
+            OptionContract(strike_price=220.0, contract_type='put', bid=7.90, ask=8.00, last_price=7.95, volume=110, open_interest=1100, implied_volatility=0.26, delta=-0.64, gamma=0.05, theta=-0.11, vega=0.37, is_itm=True),
+        ]
+        return OptionChain(underlying_price=underlying_price, calls=mock_calls, puts=mock_puts, isMock=True)
+
+    # 正常模式：從 Polygon.io 獲取實際數據
     api_key = os.getenv("POLYGON_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="POLYGON_API_KEY not found.")
@@ -208,77 +298,97 @@ async def get_option_chain(ticker: str, expiration_date: str):
     # --- 步驟 1: 獲取該到期日的所有選擇權合約代碼 ---
     contracts_url = f"https://api.polygon.io/v3/reference/options/contracts?underlying_ticker={ticker.upper()}&expiration_date={expiration_date}&limit=1000&apiKey={api_key}"
     async with httpx.AsyncClient() as client:
-        try:
-            contracts_res = await client.get(contracts_url)
-            contracts_res.raise_for_status()
-            contracts_data = contracts_res.json().get("results", [])
-            option_tickers = [contract["ticker"] for contract in contracts_data]
-        except (httpx.RequestError, httpx.HTTPStatusError) as exc:
-            raise HTTPException(status_code=503, detail=f"Failed to fetch options contracts from Polygon: {exc}")
-            
-    if not contracts_data:
-        # 如果沒有任何合約，可能無法取得股價，直接回傳空值
+        contracts_res = await client.get(contracts_url)
+        contracts_data = contracts_res.json().get("results", [])
+        option_tickers = [c["ticker"] for c in contracts_data]
+    if not option_tickers:
         return OptionChain(underlying_price=0, calls=[], puts=[])
 
     # --- 步驟 2: 批量獲取所有合約 + 股票本身的市場快照 ---
     # 將股票本身的 ticker 也加入查詢列表
     all_tickers_to_query = option_tickers + [ticker.upper()]
-    tickers_string = ",".join(all_tickers_to_query)
-    snapshot_url = f"https://api.polygon.io/v2/snapshot/tickers?tickers={tickers_string}&apiKey={api_key}"
-    
+    BATCH_SIZE = 25
+    snapshot_map = {}
+
     async with httpx.AsyncClient() as client:
-        try:
-            snapshot_res = await client.get(snapshot_url)
-            snapshot_res.raise_for_status()
-            snapshot_data = snapshot_res.json().get("tickers", [])
-            snapshot_map = {snap["ticker"]: snap for snap in snapshot_data}
-        except (httpx.RequestError, httpx.HTTPStatusError) as exc:
-             raise HTTPException(status_code=503, detail=f"Failed to fetch options snapshots from Polygon: {exc}")
+        tasks = []
+        for i in range(0, len(all_tickers_to_query), BATCH_SIZE):
+            batch = all_tickers_to_query[i:i + BATCH_SIZE]
+            tickers_str = ",".join(batch)
+            url = f"https://api.polygon.io/v3/snapshot?ticker.any_of={tickers_str}&apiKey={api_key}"
+            tasks.append(client.get(url))
+        
+        responses = await asyncio.gather(*tasks, return_exceptions=True)
+        for res in responses:
+            if isinstance(res, Exception):
+                continue
+            if isinstance(res, httpx.Response) and res.status_code == 200:
+                for item in res.json().get("results", []):
+                    if not item.get("error"):
+                        snapshot_map[item["ticker"]] = item
 
     # --- 步驟 3: 從快照中提取股價並組合數據 ---
     stock_snapshot = snapshot_map.get(ticker.upper())
-    if not stock_snapshot or stock_snapshot.get("lastTrade") is None:
-        raise HTTPException(status_code=404, detail="Could not fetch underlying stock price from snapshot.")
+
+    if not stock_snapshot:
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Could not fetch snapshot for stock '{ticker.upper()}'."
+        )
     
-    underlying_price = stock_snapshot["lastTrade"]["p"] # 使用最後成交價
+    underlying_price = (
+        stock_snapshot.get('session', {}).get('close') or 
+        stock_snapshot.get('last_trade', {}).get('price')
+    )
+    
+    if underlying_price is None:
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Could not parse price from stock snapshot: {stock_snapshot}"
+        )
 
+    # --- 步驟 4: 組合數據---
     calls, puts = [], []
-    for contract_info in contracts_data:
-        ticker_symbol = contract_info["ticker"]
-        snapshot = snapshot_map.get(ticker_symbol)
-        
-        if not snapshot or not snapshot.get("greeks"):
+    for contract in contracts_data:
+        snap = snapshot_map.get(contract["ticker"])
+        if not snap or not snap.get("greeks"):
             continue
-
-        strike = contract_info["strike_price"]
-        contract_type = contract_info["contract_type"]
-        is_itm = (contract_type == "call" and strike < underlying_price) or \
-                 (contract_type == "put" and strike > underlying_price)
-
-        option_contract = OptionContract(
-            strike_price=strike,
-            contract_type=contract_type,
-            bid=snapshot["last_quote"]["bid"],
-            ask=snapshot["last_quote"]["ask"],
-            last_price=snapshot.get("day", {}).get("last"),
-            volume=snapshot.get("day", {}).get("volume"),
-            open_interest=snapshot.get("open_interest"),
-            implied_volatility=snapshot.get("implied_volatility"),
-            delta=snapshot["greeks"]["delta"],
-            gamma=snapshot["greeks"]["gamma"],
-            theta=snapshot["greeks"]["theta"],
-            vega=snapshot["greeks"]["vega"],
+        
+        details = snap['details']
+        is_itm = (
+            (details['contract_type'] == 'call' and details['strike_price'] < underlying_price) or
+            (details['contract_type'] == 'put' and details['strike_price'] > underlying_price)
+        )
+        
+        contract_obj = OptionContract(
+            strike_price=details['strike_price'], 
+            contract_type=details['contract_type'],
+            bid=snap['last_quote']['bid'], 
+            ask=snap['last_quote']['ask'],
+            last_price=snap.get('last_trade', {}).get('price'),
+            volume=snap.get('session', {}).get('volume'),
+            open_interest=snap.get('open_interest'),
+            implied_volatility=snap.get('implied_volatility'),
+            delta=snap['greeks']['delta'], 
+            gamma=snap['greeks']['gamma'],
+            theta=snap['greeks']['theta'], 
+            vega=snap['greeks']['vega'],
             is_itm=is_itm
         )
-        if contract_type == "call":
-            calls.append(option_contract)
+
+        if details['contract_type'] == 'call':
+            calls.append(contract_obj)
         else:
-            puts.append(option_contract)
+            puts.append(contract_obj)
 
     calls.sort(key=lambda c: c.strike_price)
     puts.sort(key=lambda c: c.strike_price)
-
-    return OptionChain(underlying_price=underlying_price, calls=calls, puts=puts)
+    
+    return OptionChain(
+        underlying_price=underlying_price, 
+        calls=calls, 
+        puts=puts
+    )
 
 @app.get("/api/v1/stocks/{ticker}/volatility", response_model=VolatilityAnalysis)
 async def get_volatility_analysis(ticker: str):
@@ -351,6 +461,20 @@ async def get_volatility_analysis(ticker: str):
         chart_data=chart_data,
         **iv_indicators
     )
+
+@app.post("/api/v1/strategies/analyze", response_model=AnalyzedStrategy)
+async def analyze_strategy_endpoint(strategy: StrategyDefinition):
+    """
+    接收一個策略定義，並回傳完整的量化分析結果。
+    - **Request Body**: 一個包含 'legs' 列表的 JSON 物件。
+    """
+    try:
+        analysis_result = await perform_strategy_analysis(strategy.legs)
+        return analysis_result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
 
 @app.get("/")
 async def read_root():
