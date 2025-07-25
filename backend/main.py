@@ -39,6 +39,7 @@ app = FastAPI(
     title="美股選擇權分析平台 API",
     description="提供美股市場數據、選擇權鏈、策略分析等功能。",
     version="1.0.0",
+    lifespan=lifespan
 )
 
 # 2. 定義數據模型
