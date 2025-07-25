@@ -278,17 +278,109 @@ async def get_option_chain(ticker: str, expiration_date: str):
     if not app_state.get("polygon_options_accessible", False):
         print("INFO: Operating in 'mock' mode. Returning mock option chain data.")
         underlying_price = 215.50
+        
         mock_calls = [
-            OptionContract(strike_price=210.0, contract_type='call', bid=7.50, ask=7.60, last_price=7.55, volume=150, open_interest=1200, implied_volatility=0.28, delta=0.65, gamma=0.05, theta=-0.12, vega=0.35, is_itm=True),
-            OptionContract(strike_price=215.0, contract_type='call', bid=4.20, ask=4.25, last_price=4.22, volume=350, open_interest=2500, implied_volatility=0.27, delta=0.51, gamma=0.07, theta=-0.15, vega=0.40, is_itm=True),
-            OptionContract(strike_price=220.0, contract_type='call', bid=2.10, ask=2.15, last_price=2.13, volume=280, open_interest=1800, implied_volatility=0.26, delta=0.35, gamma=0.06, theta=-0.14, vega=0.38, is_itm=False),
+            OptionContract(
+                strike_price=210.0, 
+                contract_type='call', 
+                bid=7.50, 
+                ask=7.60, 
+                last_price=7.55, 
+                volume=150, 
+                open_interest=1200, 
+                implied_volatility=0.28, 
+                delta=0.65, 
+                gamma=0.05, 
+                theta=-0.12, 
+                vega=0.35, 
+                is_itm=True
+            ),
+            OptionContract(
+                strike_price=215.0, 
+                contract_type='call', 
+                bid=4.20, 
+                ask=4.25, 
+                last_price=4.22, 
+                volume=350, 
+                open_interest=2500, 
+                implied_volatility=0.27, 
+                delta=0.51, 
+                gamma=0.07, 
+                theta=-0.15, 
+                vega=0.40, 
+                is_itm=True
+            ),
+            OptionContract(
+                strike_price=220.0, 
+                contract_type='call', 
+                bid=2.10, 
+                ask=2.15, 
+                last_price=2.13, 
+                volume=280, 
+                open_interest=1800, 
+                implied_volatility=0.26, 
+                delta=0.35, 
+                gamma=0.06, 
+                theta=-0.14, 
+                vega=0.38, 
+                is_itm=False
+            ),
         ]
+        
         mock_puts = [
-            OptionContract(strike_price=210.0, contract_type='put', bid=2.80, ask=2.85, last_price=2.83, volume=180, open_interest=1500, implied_volatility=0.28, delta=-0.38, gamma=0.06, theta=-0.13, vega=0.36, is_itm=False),
-            OptionContract(strike_price=215.0, contract_type='put', bid=4.80, ask=4.90, last_price=4.85, volume=320, open_interest=2200, implied_volatility=0.27, delta=-0.49, gamma=0.07, theta=-0.15, vega=0.40, is_itm=False),
-            OptionContract(strike_price=220.0, contract_type='put', bid=7.90, ask=8.00, last_price=7.95, volume=110, open_interest=1100, implied_volatility=0.26, delta=-0.64, gamma=0.05, theta=-0.11, vega=0.37, is_itm=True),
+            OptionContract(
+                strike_price=210.0, 
+                contract_type='put', 
+                bid=2.80, 
+                ask=2.85, 
+                last_price=2.83, 
+                volume=180, 
+                open_interest=1500, 
+                implied_volatility=0.28, 
+                delta=-0.38, 
+                gamma=0.06, 
+                theta=-0.13, 
+                vega=0.36, 
+                is_itm=False
+            ),
+            OptionContract(
+                strike_price=215.0, 
+                contract_type='put', 
+                bid=4.80, 
+                ask=4.90, 
+                last_price=4.85, 
+                volume=320, 
+                open_interest=2200, 
+                implied_volatility=0.27, 
+                delta=-0.49, 
+                gamma=0.07, 
+                theta=-0.15, 
+                vega=0.40, 
+                is_itm=False
+            ),
+            OptionContract(
+                strike_price=220.0, 
+                contract_type='put', 
+                bid=7.90, 
+                ask=8.00, 
+                last_price=7.95, 
+                volume=110, 
+                open_interest=1100, 
+                implied_volatility=0.26, 
+                delta=-0.64, 
+                gamma=0.05, 
+                theta=-0.11, 
+                vega=0.37, 
+                is_itm=True
+            ),
         ]
-        return OptionChain(underlying_price=underlying_price, calls=mock_calls, puts=mock_puts, isMock=True)
+        
+        return OptionChain(
+            underlying_price=underlying_price, 
+            calls=mock_calls, 
+            puts=mock_puts, 
+            isMock=True
+        )
 
     # 正常模式：從 Polygon.io 獲取實際數據
     api_key = os.getenv("POLYGON_API_KEY")
