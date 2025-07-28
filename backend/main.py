@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 from dotenv import load_dotenv
 import asyncio
+from enum import Enum
 from datetime import date, timedelta
 from contextlib import asynccontextmanager
 
@@ -116,6 +117,73 @@ class AnalyzedStrategy(BaseModel):
     position_theta: float
     position_vega: float
     pl_chart_data: List[PLDataPoint]
+
+class MarketDirection(str, Enum):
+    STRONG_BULLISH = "大漲"
+    MILD_BULLISH = "溫和看漲"
+    NEUTRAL = "盤整"
+    MILD_BEARISH = "溫和看跌"
+    STRONG_BEARISH = "大跌"
+
+class VolatilityDirection(str, Enum):
+    RISING = "IV上升"
+    NEUTRAL = "IV持平"
+    FALLING = "IV下降"
+
+class StrategyFinderRequest(BaseModel):
+    direction: MarketDirection = Field(..., description="市場方向預期")
+    volatility: VolatilityDirection = Field(..., description="波動率預期")
+
+class RecommendedStrategy(BaseModel):
+    name: str
+    description: str
+    risk_profile: str
+    categories: List[str]
+
+STRATEGY_DATABASE = {
+    "Long Call": {
+        "name": "Long Call (買入看漲期權)",
+        "description": "最基本的看漲策略，支付權利金，賭標的物價格在到期前會大漲。",
+        "risk_profile": "風險有限 (最大虧損為付出的權利金)，獲利無限。",
+        "categories": ["大漲", "溫和看漲", "IV上升"]
+    },
+    "Short Put": {
+        "name": "Short Put (賣出看跌期權)",
+        "description": "溫和看漲或中性的策略，收取權利金，賭標的物價格在到期前不會大跌。",
+        "risk_profile": "獲利有限 (最大獲利為收取的權利金)，風險巨大（若股價跌至零）。",
+        "categories": ["溫和看漲", "盤整", "IV下降"]
+    },
+    "Long Put": {
+        "name": "Long Put (買入看跌期權)",
+        "description": "最基本的看跌策略，支付權利金，賭標的物價格在到期前會大跌。",
+        "risk_profile": "風險有限 (最大虧損為付出的權利金)，獲利巨大。",
+        "categories": ["大跌", "溫和看跌", "IV上升"]
+    },
+    "Short Call": {
+        "name": "Short Call (賣出看漲期權)",
+        "description": "溫和看跌或中性的策略，收取權利金，賭標的物價格在到期前不會大漲。",
+        "risk_profile": "獲利有限 (最大獲利為收取的權利金)，風險無限。",
+        "categories": ["溫和看跌", "盤整", "IV下降"]
+    },
+    "Iron Condor": {
+        "name": "Iron Condor (鐵兀鷹)",
+        "description": "一種中性策略，透過賣出一組價差合約來收取權利金，賭標的物價格在一個特定區間內盤整。",
+        "risk_profile": "風險與獲利都有限。",
+        "categories": ["盤整", "IV下降"]
+    },
+    "Short Strangle": {
+        "name": "Short Strangle (賣出勒式)",
+        "description": "一種中性、高階的策略，賣出不同履約價的 Call 和 Put 來收取權利金，賭標的物價格在一個大區間內盤整。",
+        "risk_profile": "獲利有限，風險無限。",
+        "categories": ["盤整", "IV下降"]
+    },
+    "Long Straddle": {
+        "name": "Long Straddle (買入跨式)",
+        "description": "買入同履約價的 Call 和 Put，賭市場會出現任一方向的劇烈波動，但不確定是哪個方向。",
+        "risk_profile": "風險有限，獲利無限。",
+        "categories": ["大漲", "大跌", "IV上升"]
+    }
+}
 
 # 3. 建立 API 端點
 # --- API 健康檢查函式 ---
@@ -568,6 +636,30 @@ async def analyze_strategy_endpoint(strategy: StrategyDefinition):
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
+
+@app.post("/api/v1/strategies/find", response_model=List[RecommendedStrategy], tags=["Strategies"])
+def find_strategies(request: StrategyFinderRequest):
+    """
+    根據使用者對市場方向和波動率的預期，推薦合適的選擇權策略。
+    """
+    recommended_strategies = []
+    
+    # 遍歷我們的策略資料庫
+    for strategy_name, properties in STRATEGY_DATABASE.items():
+        # 檢查策略的分類是否同時包含使用者選擇的方向和波動率預期
+        if request.direction.value in properties["categories"] and \
+           request.volatility.value in properties["categories"]:
+            
+            recommended_strategies.append(
+                RecommendedStrategy(
+                    name=properties["name"],
+                    description=properties["description"],
+                    risk_profile=properties["risk_profile"],
+                    categories=properties["categories"]
+                )
+            )
+            
+    return recommended_strategies
 
 @app.get("/")
 async def read_root():
