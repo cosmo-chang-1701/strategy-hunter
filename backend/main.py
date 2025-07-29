@@ -8,6 +8,7 @@ import asyncio
 from enum import Enum
 from datetime import date, timedelta
 from contextlib import asynccontextmanager
+import math
 
 # --- 計算模組 ---
 from volatility_calculator import calculate_hv, calculate_iv_indicators
@@ -139,6 +140,16 @@ class RecommendedStrategy(BaseModel):
     description: str
     risk_profile: str
     categories: List[str]
+
+class PositionSizeRequest(BaseModel):
+    total_capital: float = Field(..., gt=0, description="總資金 (例如: 25000)")
+    risk_percentage: float = Field(..., gt=0, le=100, description="單筆交易風險容忍度 (%)，例如輸入 2 代表 2%")
+    max_loss_per_contract: float = Field(..., gt=0, description="單份合約的最大虧損金額 (應為正值)")
+
+class PositionSizeResponse(BaseModel):
+    max_risk_amount: float
+    suggested_contracts: int
+    message: str
 
 STRATEGY_DATABASE = {
     "Long Call": {
@@ -660,6 +671,35 @@ def find_strategies(request: StrategyFinderRequest):
             )
             
     return recommended_strategies
+
+@app.post("/api/v1/risk/position-size", response_model=PositionSizeResponse, tags=["Risk Management"])
+def calculate_position_size(request: PositionSizeRequest):
+    """
+    根據總資金、風險百分比和策略最大虧損，計算建議的倉位規模。
+    """
+    # 1. 計算本次交易可承受的最大風險金額
+    # 例如: $25,000 * (2 / 100) = $500
+    max_risk_amount = request.total_capital * (request.risk_percentage / 100.0)
+
+    # 2. 計算建議的合約數量
+    # 例如: $500 / $250 (每份合約最大虧損) = 2 份
+    # 使用 math.floor() 無條件捨去，以採取更保守的風險管理
+    suggested_contracts = math.floor(max_risk_amount / request.max_loss_per_contract)
+    
+    # 確保至少為 0，避免負數
+    suggested_contracts = max(0, suggested_contracts)
+    
+    message = f"在總資金 ${request.total_capital:,.2f} 下，單筆交易承受 {request.risk_percentage}% 的風險，最多可虧損 ${max_risk_amount:,.2f}。"
+    if suggested_contracts > 0:
+        message += f" 建議的交易數量為 {suggested_contracts} 份合約。"
+    else:
+        message += " 該筆交易的潛在虧損過高，不建議建立倉位。"
+
+    return PositionSizeResponse(
+        max_risk_amount=round(max_risk_amount, 2),
+        suggested_contracts=suggested_contracts,
+        message=message
+    )
 
 @app.get("/")
 async def read_root():
