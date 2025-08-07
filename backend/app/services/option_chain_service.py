@@ -302,26 +302,3 @@ class OptionChainService:
                 raise HTTPException(
                     status_code=500, detail=f"An unexpected error occurred: {str(e)}"
                 )
-
-
-# =============================================================================
-# Backwards compatibility - to be removed after full refactoring
-# =============================================================================
-
-
-def get_mock_option_chain() -> schemas.OptionChain:
-    # Note: This mock doesn't have ticker/expiration context, so it's less ideal.
-    return OptionChainService(is_live=False)._get_mock_option_chain("SPY", "2024-09-20")
-
-
-async def fetch_and_process_option_chain(
-    ticker: str, expiration_date: str
-) -> schemas.OptionChain:
-    service = OptionChainService(is_live=True)
-    return await service.get_option_chain(ticker, expiration_date)
-
-
-async def fetch_option_expirations(ticker: str) -> List[str]:
-    is_live = settings.POLYGON_API_KEY is not None
-    service = OptionChainService(is_live=is_live)
-    return await service.fetch_option_expirations(ticker)
