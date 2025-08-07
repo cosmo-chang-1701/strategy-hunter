@@ -1,5 +1,10 @@
+import logging
+
+log = logging.getLogger(__name__)
+
+
 def main():
-    print("Hello from backend!")
+    log.info("Hello from backend!")
 
 
 if __name__ == "__main__":

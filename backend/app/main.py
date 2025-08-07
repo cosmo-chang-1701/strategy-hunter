@@ -1,6 +1,6 @@
 import os
 import httpx
-
+import logging
 
 from fastapi import FastAPI
 from dotenv import load_dotenv
@@ -13,30 +13,34 @@ from .routers import journal, market_data, options, risk, strategies, volatility
 # 在應用程式啟動時，載入 .env 檔案中的環境變數
 load_dotenv()
 
+# 設定日誌記錄器
+logging.basicConfig(level=logging.INFO, format="%(levelname)-8s: %(message)s")
+log = logging.getLogger(__name__)
+
 
 # --- FastAPI 生命週期管理器 ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("INFO:     Application startup...")
+    log.info("Application startup...")
 
     # 檢查 Polygon.io 的選擇權快照存取權限
-    print("INFO:     Performing Polygon.io v3 options access check...")
+    log.info("Performing Polygon.io v3 options access check...")
     app_state["polygon_options_accessible"] = await check_polygon_options_access()
     if app_state["polygon_options_accessible"]:
-        print("INFO:     Polygon.io v3 options snapshot access: VERIFIED")
+        log.info("Polygon.io v3 options snapshot access: VERIFIED")
     else:
-        print(
-            "WARNING:  Polygon.io v3 options snapshot access: FAILED. Option chain will use mock data."
+        log.warning(
+            "Polygon.io v3 options snapshot access: FAILED. Option chain will use mock data."
         )
 
     # 建立資料庫表格
     async with engine.begin() as conn:
         # await conn.run_sync(Base.metadata.drop_all) # 如果需要，可取消註解以在每次重啟時刪除舊表
         await conn.run_sync(Base.metadata.create_all)
-    print("INFO:     Database tables created.")
+    log.info("Database tables created.")
 
     yield
-    print("INFO:     Application shutdown.")
+    log.info("Application shutdown.")
     app_state.clear()
 
 
@@ -86,7 +90,7 @@ async def check_polygon_options_access() -> bool:
                         return True  # 找到選擇權且沒有錯誤
             return False
     except Exception as e:
-        print(f"ERROR during Polygon access check: {e}")
+        log.error(f"ERROR during Polygon access check: {e}")
         return False
 
 

@@ -1,10 +1,13 @@
 import asyncio
 import os
 import httpx
+import logging
 from fastapi import HTTPException
 from typing import List
 
 from .. import schemas
+
+log = logging.getLogger(__name__)
 
 
 class OptionChainService:
@@ -30,7 +33,7 @@ class OptionChainService:
         """
         產生並回傳一份寫死的、結構完整的假資料。
         """
-        print("INFO:     (Service) Returning mock option chain data.")
+        log.info("(Service) Returning mock option chain data.")
         underlying_price = 215.50
 
         mock_calls = [
@@ -148,8 +151,8 @@ class OptionChainService:
         """
         從 Polygon.io API 獲取選擇權鏈並處理它。
         """
-        print(
-            f"INFO:     (Service) Fetching LIVE option chain for {ticker} on {expiration_date}"
+        log.info(
+            f"(Service) Fetching LIVE option chain for {ticker} on {expiration_date}"
         )
         # 1. Fetch underlying price
         underlying_price = await self._fetch_underlying_price(ticker)
@@ -235,7 +238,7 @@ class OptionChainService:
                 data = response.json()
                 return data["results"]["p"]
             except Exception as e:
-                print(f"Could not fetch underlying price for {ticker}: {e}")
+                log.error(f"Could not fetch underlying price for {ticker}: {e}")
                 # In a real app, you might want to raise an exception
                 # or have a more sophisticated fallback.
                 raise HTTPException(
@@ -256,14 +259,14 @@ class OptionChainService:
         """
         回傳一個假的到期日列表。
         """
-        print(f"INFO:     (Service) Returning MOCK option expirations.")
+        log.info(f"(Service) Returning MOCK option expirations.")
         return ["2024-08-16", "2024-08-23", "2024-08-30", "2024-09-20"]
 
     async def _fetch_live_option_expirations(self, ticker: str) -> List[str]:
         """
         從 Polygon.io API 獲取真實的到期日。
         """
-        print(f"INFO:     (Service) Fetching LIVE option expirations for {ticker}")
+        log.info(f"(Service) Fetching LIVE option expirations for {ticker}")
         url = f"https://api.polygon.io/v3/reference/options/contracts?underlying_ticker={ticker}&limit=1000&apiKey={self.api_key}"
 
         expirations = set()

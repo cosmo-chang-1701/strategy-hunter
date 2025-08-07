@@ -1,7 +1,10 @@
 import httpx
+import logging
 from typing import List
 from .. import schemas
 from ..config import settings
+
+log = logging.getLogger(__name__)
 
 
 class MarketDataService:
@@ -20,7 +23,7 @@ class MarketDataService:
                 # 在服務層可以記錄錯誤，但讓路由層決定 HTTP 響應
                 # 或者拋出一個自定義的服務層異常
                 # 此處為了簡化，我們回傳空列表，由路由層處理
-                print(f"Error fetching market overview from FMP API: {e}")
+                log.error(f"Error fetching market overview from FMP API: {e}")
                 return []
 
     async def fetch_stock_quote(self, ticker: str) -> schemas.StockQuote | None:
@@ -38,7 +41,7 @@ class MarketDataService:
                 # 將 FMP 的資料格式轉換為我們的 StockQuote 格式
                 return schemas.StockQuote.from_fmp_data(data[0])
             except httpx.HTTPError as e:
-                print(f"Error fetching stock quote from FMP API: {e}")
+                log.error(f"Error fetching stock quote from FMP API: {e}")
                 return None
 
 
