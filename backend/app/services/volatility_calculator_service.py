@@ -7,16 +7,16 @@ from datetime import date, timedelta
 from fastapi import HTTPException
 from app.schemas import VolatilityAnalysis, VolatilityDataPoint
 
+from ..config import settings
+
 
 class VolatilityCalculatorService:
     async def get_volatility_analysis(self, ticker: str):
         """
         獲取指定股票的波動率分析數據，包含 IV/HV 歷史圖表數據及 IV Rank/Percentile。
         """
-        fmp_api_key = os.getenv("FMP_API_KEY")
-        polygon_api_key = os.getenv("POLYGON_API_KEY")
-        if not fmp_api_key or not polygon_api_key:
-            raise HTTPException(status_code=500, detail="API keys are missing.")
+        fmp_api_key = settings.FMP_API_KEY
+        polygon_api_key = settings.POLYGON_API_KEY
 
         today = date.today()
         one_year_ago = today - timedelta(days=365)

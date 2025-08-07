@@ -1,4 +1,3 @@
-import os
 import httpx
 import logging
 
@@ -9,6 +8,8 @@ from .database import engine, Base
 
 from .state import app_state
 from .routers import journal, market_data, options, risk, strategies, volatility
+
+from .config import settings
 
 # 在應用程式啟動時，載入 .env 檔案中的環境變數
 load_dotenv()
@@ -68,9 +69,7 @@ async def check_polygon_options_access() -> bool:
     在啟動時執行，檢查 Polygon API 金鑰是否能存取選擇權快照。
     返回 True 代表權限正常，False 代表權限不足或發生錯誤。
     """
-    api_key = os.getenv("POLYGON_API_KEY")
-    if not api_key:
-        return False
+    api_key = settings.POLYGON_API_KEY
 
     # 我們用一個高流通性的 SPY ETF 及其選擇權作為測試對象
     # O:SPY250815C00550000 是一個 SPY 2025/08/15 到期，$550 的 Call

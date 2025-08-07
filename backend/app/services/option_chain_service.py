@@ -1,4 +1,3 @@
-import asyncio
 import os
 import httpx
 import logging
@@ -7,15 +6,15 @@ from typing import List
 
 from .. import schemas
 
+from ..config import settings
+
 log = logging.getLogger(__name__)
 
 
 class OptionChainService:
     def __init__(self, is_live: bool):
         self.is_live = is_live
-        self.api_key = os.getenv("POLYGON_API_KEY")
-        if self.is_live and not self.api_key:
-            raise ValueError("POLYGON_API_KEY is not set in the environment variables")
+        self.api_key = settings.POLYGON_API_KEY
 
     async def get_option_chain(
         self, ticker: str, expiration_date: str
@@ -323,6 +322,6 @@ async def fetch_and_process_option_chain(
 
 
 async def fetch_option_expirations(ticker: str) -> List[str]:
-    is_live = os.getenv("POLYGON_API_KEY") is not None
+    is_live = settings.POLYGON_API_KEY is not None
     service = OptionChainService(is_live=is_live)
     return await service.fetch_option_expirations(ticker)

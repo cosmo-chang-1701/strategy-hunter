@@ -5,6 +5,8 @@ from typing import List, Dict, Any
 
 from .. import schemas
 
+from ..config import settings
+
 # --- 策略搜尋器邏輯 ---
 
 STRATEGY_DATABASE = {
@@ -86,7 +88,7 @@ async def analyze_strategy_performance(
         # 注意：這假設策略中的所有 leg 都有相同的標的物
         underlying_ticker = leg_tickers[0].split(":")[1][:6].rstrip("0123456789")
 
-        api_key = os.getenv("POLYGON_API_KEY")
+        api_key = settings.POLYGON_API_KEY
         if not api_key:
             return {
                 "error": "POLYGON_API_KEY environment variable not set.",
