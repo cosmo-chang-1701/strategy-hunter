@@ -75,11 +75,12 @@ async def check_polygon_options_access() -> bool:
     # 我們用一個高流通性的 SPY ETF 及其選擇權作為測試對象
     # O:SPY250815C00550000 是一個 SPY 2025/08/15 到期，$550 的 Call
     test_tickers = "SPY,O:SPY250815C00550000"
-    url = f"https://api.polygon.io/v3/snapshot?ticker.any_of={test_tickers}&apiKey={api_key}"
+    url = f"https://api.polygon.io/v3/snapshot?ticker.any_of={test_tickers}"
+    headers = {"Authorization": f"Bearer {api_key}"}
 
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.get(url, timeout=10.0)
+            response = await client.get(url, headers=headers, timeout=10.0)
             if response.status_code == 200:
                 # 檢查回傳的 tickers 中是否真的包含我們的選擇權 ticker
                 data = response.json()

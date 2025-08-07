@@ -158,10 +158,11 @@ class OptionChainService:
         underlying_price = await self._fetch_underlying_price(ticker)
 
         # 2. Fetch option chain snapshot
-        url = f"https://api.polygon.io/v3/snapshot/options/{ticker}?expiration_date={expiration_date}&limit=1000&apiKey={self.api_key}"
+        url = f"https://api.polygon.io/v3/snapshot/options/{ticker}?expiration_date={expiration_date}&limit=1000"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
         async with httpx.AsyncClient() as client:
             try:
-                response = await client.get(url)
+                response = await client.get(url, headers=headers)
                 response.raise_for_status()
                 data = response.json()
 
@@ -230,10 +231,11 @@ class OptionChainService:
 
     async def _fetch_underlying_price(self, ticker: str) -> float:
         """Fetches the last trade price for the underlying stock."""
-        url = f"https://api.polygon.io/v2/last/trade/{ticker}?apiKey={self.api_key}"
+        url = f"https://api.polygon.io/v2/last/trade/{ticker}"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
         async with httpx.AsyncClient() as client:
             try:
-                response = await client.get(url)
+                response = await client.get(url, headers=headers)
                 response.raise_for_status()
                 data = response.json()
                 return data["results"]["p"]
@@ -267,22 +269,28 @@ class OptionChainService:
         從 Polygon.io API 獲取真實的到期日。
         """
         log.info(f"(Service) Fetching LIVE option expirations for {ticker}")
-        url = f"https://api.polygon.io/v3/reference/options/contracts?underlying_ticker={ticker}&limit=1000&apiKey={self.api_key}"
+        url = f"https://api.polygon.io/v3/reference/options/contracts?underlying_ticker={ticker}&limit=1000"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
 
         expirations = set()
         async with httpx.AsyncClient() as client:
             try:
                 while url:
-                    response = await client.get(url)
+                    response = await client.get(url, headers=headers)
                     response.raise_for_status()
                     data = response.json()
 
                     for contract in data.get("results", []):
                         expirations.add(contract.get("expiration_date"))
 
-                    url = data.get("next_url")
-                    if url:
-                        url += f"&apiKey={self.api_key}"
+                    next_url = data.get("next_url")
+                    if next_url:
+                        # The next_url from polygon already contains the api key, so we don't need to add it again.
+                        # We will strip it and use our header method.
+                        # Create a new header for the next request
+                        url = f"{next_url}"
+                    else:
+                        url = None
 
                 return sorted(list(expirations))
 

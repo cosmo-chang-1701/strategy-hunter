@@ -26,11 +26,12 @@ class VolatilityCalculatorService:
             # 任務1: 從 FMP 獲取歷史 IV
             fmp_url = f"https://financialmodelingprep.com/api/v3/historical-daily-implied-volatility/{ticker.upper()}?from={one_year_ago}&to={today}&apikey={fmp_api_key}"
             # 任務2: 從 Polygon 獲取歷史股價 (用於計算 HV)
-            polygon_url = f"https://api.polygon.io/v2/aggs/ticker/{ticker.upper()}/range/1/day/{one_year_ago}/{today}?adjusted=true&sort=asc&limit=5000&apiKey={polygon_api_key}"
+            polygon_url = f"https://api.polygon.io/v2/aggs/ticker/{ticker.upper()}/range/1/day/{one_year_ago}/{today}?adjusted=true&sort=asc&limit=5000"
+            headers = {"Authorization": f"Bearer {polygon_api_key}"}
 
             try:
                 fmp_task = client.get(fmp_url)
-                polygon_task = client.get(polygon_url)
+                polygon_task = client.get(polygon_url, headers=headers)
                 responses = await asyncio.gather(fmp_task, polygon_task)
 
                 fmp_res, polygon_res = responses

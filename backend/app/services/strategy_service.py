@@ -95,10 +95,13 @@ async def analyze_strategy_performance(
 
         all_tickers_to_query = leg_tickers + [underlying_ticker]
         tickers_string = ",".join(all_tickers_to_query)
-        snapshot_url = f"https://api.polygon.io/v3/snapshot?ticker.any_of={tickers_string}&apiKey={api_key}"
+        snapshot_url = (
+            f"https://api.polygon.io/v3/snapshot?ticker.any_of={tickers_string}"
+        )
+        headers = {"Authorization": f"Bearer {api_key}"}
 
         async with httpx.AsyncClient() as client:
-            snapshot_res = await client.get(snapshot_url)
+            snapshot_res = await client.get(snapshot_url, headers=headers)
             snapshot_res.raise_for_status()
             snapshot_data = snapshot_res.json()
             if not snapshot_data.get("results"):
