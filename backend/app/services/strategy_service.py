@@ -86,15 +86,15 @@ async def analyze_strategy_performance(
         leg_tickers = [leg.option_ticker for leg in legs]
         # 從第一個 leg ticker 推斷標的物 ticker
         # 注意：這假設策略中的所有 leg 都有相同的標的物
-        underlying_ticker = leg_tickers[0].split(":")[1][:6].rstrip("0123456789")
-
-        api_key = settings.POLYGON_API_KEY
-        if not api_key:
+        try:
+            underlying_ticker = leg_tickers[0].split(":")[1][:6].rstrip("0123456789")
+        except IndexError:
             return {
-                "error": "POLYGON_API_KEY environment variable not set.",
-                "status_code": 500,
+                "error": "Invalid option ticker format. Expected format like 'O:SPY250815C00550000'.",
+                "status_code": 400,
             }
 
+        api_key = settings.POLYGON_API_KEY
         all_tickers_to_query = leg_tickers + [underlying_ticker]
         tickers_string = ",".join(all_tickers_to_query)
         snapshot_url = (

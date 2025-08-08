@@ -26,13 +26,14 @@ async def find_strategies(
     "/analyze", response_model=schemas.AnalyzedStrategy, summary="分析策略表現"
 )
 async def analyze_strategy_endpoint(
-    analysis_result: Dict[str, Any] = Depends(
-        strategy_service.analyze_strategy_performance
-    ),
+    strategy: schemas.StrategyDefinition,
 ):
     """
     分析給定策略的損益情況、最大風險、最大回報和希臘值。
     """
+    analysis_result = await strategy_service.analyze_strategy_performance(
+        strategy=strategy
+    )
     if "error" in analysis_result:
         status_code = analysis_result.get("status_code", 400)
         raise HTTPException(status_code=status_code, detail=analysis_result["error"])
