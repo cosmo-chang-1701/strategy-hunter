@@ -182,24 +182,3 @@ class AnalyzedStrategy(BaseModel):
     position_theta: float
     position_vega: float
     pl_chart_data: List[PLDataPoint]
-
-
-# =============================================================================
-# Position Sizing - 倉位管理相關模型
-# =============================================================================
-
-
-class PositionSizeRequest(BaseModel):
-    total_capital: float = Field(..., gt=0, description="總資金 (例如: 25000)")
-    risk_percentage: float = Field(
-        ..., gt=0, le=100, description="單筆交易風險容忍度 (%)，例如輸入 2 代表 2%"
-    )
-    max_loss_per_contract: float = Field(
-        ..., gt=0, description="單份合約的最大虧損金額 (應為正值)"
-    )
-
-
-class PositionSizeResponse(BaseModel):
-    max_risk_amount: float
-    suggested_contracts: int
-    message: str

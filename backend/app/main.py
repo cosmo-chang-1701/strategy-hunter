@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from .database import init_db
 
 from .state import app_state
-from .routers import journal, market_data, options, risk, strategies, volatility
+from .routers import journal, market_data, options, strategies, volatility, tools
 
 from .config import settings
 
@@ -63,9 +63,9 @@ app = FastAPI(
 app.include_router(journal.router)
 app.include_router(market_data.router)
 app.include_router(options.router)
-app.include_router(risk.router)
 app.include_router(strategies.router)
 app.include_router(volatility.router)
+app.include_router(tools.router)
 
 
 # --- API 健康檢查函式 ---
