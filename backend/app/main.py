@@ -4,7 +4,7 @@ import logging
 from fastapi import FastAPI
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
-from .database import engine, Base
+from .database import init_db
 
 from .state import app_state
 from .routers import journal, market_data, options, risk, strategies, volatility
@@ -35,9 +35,7 @@ async def lifespan(app: FastAPI):
         )
 
     # 建立資料庫表格
-    async with engine.begin() as conn:
-        # await conn.run_sync(Base.metadata.drop_all) # 如果需要，可取消註解以在每次重啟時刪除舊表
-        await conn.run_sync(Base.metadata.create_all)
+    await init_db()
     log.info("Database tables created.")
 
     yield

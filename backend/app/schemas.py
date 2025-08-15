@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from enum import Enum
-from datetime import date, datetime
-from typing import List, Optional, Dict, Any
+from datetime import date
+from typing import List, Optional
 
 # =============================================================================
 # Enums - 列舉類型
@@ -203,32 +203,3 @@ class PositionSizeResponse(BaseModel):
     max_risk_amount: float
     suggested_contracts: int
     message: str
-
-
-# =============================================================================
-# Trade Journal - 交易日誌相關模型
-# =============================================================================
-
-
-class TradeJournalEntryBase(BaseModel):
-    underlying: str
-    strategy: str
-    entry_price: float
-    quantity: int
-    rationale: Optional[str] = None
-    exit_date: Optional[datetime] = None
-    exit_price: Optional[float] = None
-    final_pl: Optional[float] = None
-
-
-class TradeJournalEntryCreate(TradeJournalEntryBase):
-    pass
-
-
-class TradeJournalEntry(TradeJournalEntryBase):
-    id: int
-    entry_date: datetime
-    created_at: datetime
-
-    class Config:
-        from_attributes = True  # Pydantic v2 的寫法，讓模型能從 ORM 物件讀取資料

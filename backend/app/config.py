@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     POLYGON_API_KEY: str = "YOUR_POLYGON_KEY"
     FMP_API_KEY: str = "YOUR_FMP_KEY"
     SQLALCHEMY_DATABASE_URL: str = "sqlite+aiosqlite:///./trade_journal.db"
+    APP_DEBUG: bool = False
 
     # .env 檔案路徑與編碼設定
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")

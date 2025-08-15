@@ -1,16 +1,30 @@
+from typing import AsyncGenerator
+from sqlmodel import SQLModel
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from sqlalchemy.orm import declarative_base
+from sqlmodel.ext.asyncio.session import AsyncSession
+from .config import settings
 
-# 資料庫檔案的路徑
-SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///./trade_journal.db"
+# The database file path
+SQLALCHEMY_DATABASE_URL = settings.SQLALCHEMY_DATABASE_URL
 
-# 建立非同步的資料庫引擎
-engine = create_async_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
+# Create an asynchronous database engine
+# The `echo` parameter is set based on the app's debug mode for better performance in production.
+engine = create_async_engine(SQLALCHEMY_DATABASE_URL, echo=settings.APP_DEBUG)
 
-# 建立一個 Session 工廠，我們之後會用它來建立與資料庫的對話
 SessionLocal = async_sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# 建立一個基礎類，我們的 ORM 模型將會繼承它
-Base = declarative_base()
+
+async def init_db():
+    """
+    Initializes the database.
+    In a production environment, consider using a migration tool like Alembic.
+    """
+    async with engine.begin() as conn:
+        # This is for development, it will drop and recreate the tables
+        # await conn.run_sync(SQLModel.metadata.drop_all)
+        await conn.run_sync(SQLModel.metadata.create_all)
+
+
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    async with AsyncSession(engine) as session:
+        yield session

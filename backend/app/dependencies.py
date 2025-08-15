@@ -1,15 +1,13 @@
-from .database import SessionLocal
+from .database import get_session
 from .state import app_state
 from .services.option_chain_service import OptionChainService
 
 
-# 依賴注入：提供資料庫 session
-async def get_db():
-    async with SessionLocal() as db:
-        yield db
+# Dependency Injection: provide database session
+get_db = get_session
 
 
-# 依賴注入：提供 OptionChainService
+# Dependency Injection: provide OptionChainService
 def get_option_chain_service():
     is_live = app_state.get("polygon_options_accessible", False)
     return OptionChainService(is_live=is_live)
