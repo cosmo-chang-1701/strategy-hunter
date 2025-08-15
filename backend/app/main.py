@@ -11,6 +11,9 @@ from .routers import journal, market_data, options, risk, strategies, volatility
 
 from .config import settings
 
+from sqlmodel import SQLModel
+from .database import engine
+
 # 在應用程式啟動時，載入 .env 檔案中的環境變數
 load_dotenv()
 
@@ -23,6 +26,10 @@ log = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log.info("Application startup...")
+
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
+    print("INFO:     Database tables created.")
 
     # 檢查 Polygon.io 的選擇權快照存取權限
     log.info("Performing Polygon.io v3 options access check...")
