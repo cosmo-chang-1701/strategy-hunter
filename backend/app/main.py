@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from .database import init_db
 
 from .state import app_state
-from .routers import journal, market_data, options, strategies, volatility, tools
+from .routers import journal, market_data, options, strategies, volatility, tools, auth
 
 from .config import settings
 
@@ -85,6 +85,7 @@ app.include_router(options.router)
 app.include_router(strategies.router)
 app.include_router(volatility.router)
 app.include_router(tools.router)
+app.include_router(auth.router)
 
 
 # --- API 健康檢查函式 ---

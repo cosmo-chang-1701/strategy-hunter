@@ -11,7 +11,9 @@ SQLALCHEMY_DATABASE_URL = settings.SQLALCHEMY_DATABASE_URL
 # The `echo` parameter is set based on the app's debug mode for better performance in production.
 engine = create_async_engine(SQLALCHEMY_DATABASE_URL, echo=settings.APP_DEBUG)
 
-SessionLocal = async_sessionmaker(autocommit=False, autoflush=False, bind=engine)
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine, class_=AsyncSession, autocommit=False, autoflush=False
+)
 
 
 async def init_db():
@@ -26,5 +28,8 @@ async def init_db():
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    async with AsyncSession(engine) as session:
+    """
+    Dependency function that yields a new SQLAlchemy async session.
+    """
+    async with AsyncSessionLocal() as session:
         yield session

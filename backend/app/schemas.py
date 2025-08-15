@@ -35,7 +35,7 @@ class MarketIndex(BaseModel):
     change_percent: float
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
     @classmethod
     def from_fmp_data(cls, data: dict):
@@ -64,7 +64,7 @@ class StockQuote(BaseModel):
     exchange: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
     @classmethod
     def from_fmp_data(cls, data: dict):

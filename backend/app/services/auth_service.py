@@ -7,7 +7,7 @@ from typing import Optional
 from ..config import settings
 
 from .. import models, crud
-from ..database import SessionLocal
+from ..database import AsyncSessionLocal
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 # --- 密碼處理 ---
@@ -41,7 +41,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 # --- 使用者依賴注入 ---
 async def get_db():
-    async with SessionLocal() as db:
+    async with AsyncSessionLocal() as db:
         yield db
 
 
