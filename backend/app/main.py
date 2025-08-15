@@ -14,6 +14,8 @@ from .config import settings
 from sqlmodel import SQLModel
 from .database import engine
 
+from fastapi.middleware.cors import CORSMiddleware
+
 # 在應用程式啟動時，載入 .env 檔案中的環境變數
 load_dotenv()
 
@@ -56,6 +58,23 @@ app = FastAPI(
     description="提供美股市場數據、選擇權鏈、策略分析等功能。",
     version="1.0.0",
     lifespan=lifespan,
+)
+
+# ---加入 CORS 中介層---
+# 定義允許的前端來源
+# 在開發階段，通常是 React (3000), Vue (5173), Angular (4200) 等的本地開發伺服器
+origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:4200",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,  # 允許指定的來源
+    allow_credentials=True,  # 允許 cookies
+    allow_methods=["*"],  # 允許所有 HTTP 方法 (GET, POST, etc.)
+    allow_headers=["*"],  # 允許所有 HTTP 標頭
 )
 
 # --- 掛載路由 ---
