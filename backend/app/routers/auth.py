@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
 
 @router.post(
     "/register",
-    response_model=models.User,
+    response_model=models.UserRead,
     status_code=status.HTTP_201_CREATED,
     summary="註冊新使用者",
 )
