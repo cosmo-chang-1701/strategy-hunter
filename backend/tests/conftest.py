@@ -3,49 +3,44 @@ import pytest_asyncio
 from typing import AsyncGenerator
 from fastapi.testclient import TestClient
 from sqlmodel import SQLModel
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 import respx
 
-from app.main import app, check_polygon_options_access
+from app.main import app
 from app.database import get_session as get_db_session
-from app import database as app_database
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
+# 1. 使用非同步引擎
 test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
-TestingSessionLocal = sessionmaker(
+
+# 2. 使用 `async_sessionmaker` 來建立非同步 session 工廠
+#    這會確保產生的 session 物件支援 `async with`
+TestingSessionLocal = async_sessionmaker(
     autocommit=False, autoflush=False, bind=test_engine, class_=AsyncSession
 )
 
 
+# 3. 覆寫應用程式的 session 依賴，使其在測試中使用測試資料庫
 async def override_get_session() -> AsyncGenerator[AsyncSession, None]:
     async with TestingSessionLocal() as session:
         yield session
 
 
-@pytest_asyncio.fixture(scope="function", name="client")
-async def client_fixture(monkeypatch) -> TestClient:
-    monkeypatch.setattr(app_database, "engine", test_engine)
+app.dependency_overrides[get_db_session] = override_get_session
 
+
+@pytest_asyncio.fixture(scope="function", name="client")
+# 4. 修正 fixture 的返回類型註解
+async def client_fixture() -> AsyncGenerator[TestClient, None]:
+    # 5. 在測試開始前建立所有資料表
     async with test_engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
 
-    async def mock_check_polygon_options_access():
-        return True
+    # 6. 使用 `with` 陳述式來確保 TestClient 被正確關閉
+    with TestClient(app) as test_client:
+        yield test_client
 
-    app.dependency_overrides[get_db_session] = override_get_session
-    app.dependency_overrides[check_polygon_options_access] = mock_check_polygon_options_access
-
-    client = TestClient(app)
-    yield client
-
-    app.dependency_overrides.clear()
+    # 7. 在測試結束後刪除所有資料表，保持測試環境乾淨
     async with test_engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.drop_all)
-
-
-@pytest.fixture
-def mock_httpx():
-    with respx.mock as mock:
-        yield mock
