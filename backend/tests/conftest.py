@@ -1,10 +1,8 @@
-import pytest
 import pytest_asyncio
 from typing import AsyncGenerator
 from fastapi.testclient import TestClient
 from sqlmodel import SQLModel
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-import respx
 
 from app.main import app
 from app.database import get_session as get_db_session
