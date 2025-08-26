@@ -64,7 +64,7 @@ uv venv
 
 # Activate the environment and install dependencies
 source .venv/bin/activate
-uv sync -r requirements.txt
+uv pip install -r requirements.txt
 ```
 
 For Windows, use `.venv\Scripts\activate` to activate.
