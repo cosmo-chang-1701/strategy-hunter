@@ -9,13 +9,13 @@ async def get_journal_entries(
     db: AsyncSession, user_id: int, skip: int = 0, limit: int = 100
 ) -> List[models.TradeJournalEntry]:
     """讀取所有交易日誌"""
-    result = await db.exec(
+    result = await db.execute(
         select(models.TradeJournalEntry)
         .where(models.TradeJournalEntry.owner_id == user_id)
         .offset(skip)
         .limit(limit)
     )
-    entries = result.all()
+    entries = result.scalars().all()
     return list(entries)
 
 
@@ -40,8 +40,8 @@ async def get_journal_entry(
 async def get_user_by_username(
     db: AsyncSession, username: str
 ) -> Optional[models.User]:
-    result = await db.exec(select(models.User).where(models.User.username == username))
-    return result.first()
+    result = await db.execute(select(models.User).where(models.User.username == username))
+    return result.scalars().first()
 
 
 async def create_user(db: AsyncSession, user: models.UserCreate) -> models.User:
