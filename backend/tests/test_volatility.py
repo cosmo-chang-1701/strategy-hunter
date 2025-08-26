@@ -10,7 +10,7 @@ pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture
-def mock_volatility_apis(mock_httpx: MockRouter):
+def mock_volatility_apis(respx_mock: MockRouter):
     ticker = "AAPL"
     fmp_api_key = settings.FMP_API_KEY
     polygon_api_key = settings.POLYGON_API_KEY
@@ -19,7 +19,7 @@ def mock_volatility_apis(mock_httpx: MockRouter):
 
     # Mock FMP API for Implied Volatility
     fmp_url = f"https://financialmodelingprep.com/api/v3/historical-daily-implied-volatility/{ticker}?from={one_year_ago}&to={today}&apikey={fmp_api_key}"
-    mock_httpx.get(fmp_url).mock(
+    respx_mock.get(fmp_url).mock(
         return_value=httpx.Response(
             200,
             json=[
@@ -32,7 +32,7 @@ def mock_volatility_apis(mock_httpx: MockRouter):
 
     # Mock Polygon API for Historical Prices
     polygon_url = f"https://api.polygon.io/v2/aggs/ticker/{ticker}/range/1/day/{one_year_ago}/{today}?adjusted=true&sort=asc&limit=5000"
-    mock_httpx.get(polygon_url).mock(
+    respx_mock.get(polygon_url).mock(
         return_value=httpx.Response(
             200,
             json={
@@ -45,7 +45,7 @@ def mock_volatility_apis(mock_httpx: MockRouter):
             },
         )
     )
-    return mock_httpx
+    return respx_mock
 
 
 async def test_get_volatility_analysis_success(client: TestClient, mock_volatility_apis):
@@ -62,7 +62,7 @@ async def test_get_volatility_analysis_success(client: TestClient, mock_volatili
     assert data["chart_data"][-1]["iv"] is None # HV calc padding makes dates misaligned
 
 
-async def test_get_volatility_analysis_api_failure(client: TestClient, mock_httpx: MockRouter):
+async def test_get_volatility_analysis_api_failure(client: TestClient, respx_mock: MockRouter):
     ticker = "FAIL"
     fmp_api_key = settings.FMP_API_KEY
     today = date.today()
@@ -70,11 +70,11 @@ async def test_get_volatility_analysis_api_failure(client: TestClient, mock_http
 
     # Mock FMP API to fail
     fmp_url = f"https://financialmodelingprep.com/api/v3/historical-daily-implied-volatility/{ticker.upper()}?from={one_year_ago}&to={today}&apikey={fmp_api_key}"
-    mock_httpx.get(fmp_url).mock(return_value=httpx.Response(500))
+    respx_mock.get(fmp_url).mock(return_value=httpx.Response(500))
 
     # Mock Polygon API to succeed (to ensure one failure is enough)
     polygon_url = f"https://api.polygon.io/v2/aggs/ticker/{ticker.upper()}/range/1/day/{one_year_ago}/{today}?adjusted=true&sort=asc&limit=5000"
-    mock_httpx.get(polygon_url).mock(return_value=httpx.Response(200, json={"results": []}))
+    respx_mock.get(polygon_url).mock(return_value=httpx.Response(200, json={"results": []}))
 
     response = client.get(f"/api/v1/stocks/{ticker}/volatility")
 

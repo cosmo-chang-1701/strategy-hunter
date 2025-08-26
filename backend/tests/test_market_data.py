@@ -7,10 +7,10 @@ from app.config import settings
 pytestmark = pytest.mark.asyncio
 
 
-async def test_get_market_overview_success(client: TestClient, mock_httpx: MockRouter):
+async def test_get_market_overview_success(client: TestClient, respx_mock: MockRouter):
     api_key = settings.FMP_API_KEY
     mock_url = f"https://financialmodelingprep.com/api/v3/quote/SPY,QQQ,DIA?apikey={api_key}"
-    mock_httpx.get(mock_url).mock(
+    respx_mock.get(mock_url).mock(
         return_value=httpx.Response(
             200,
             json=[
@@ -29,11 +29,11 @@ async def test_get_market_overview_success(client: TestClient, mock_httpx: MockR
     assert data[1]["name"] == "Invesco QQQ Trust"
 
 
-async def test_get_stock_quote_success(client: TestClient, mock_httpx: MockRouter):
+async def test_get_stock_quote_success(client: TestClient, respx_mock: MockRouter):
     api_key = settings.FMP_API_KEY
     ticker = "AAPL"
     mock_url = f"https://financialmodelingprep.com/api/v3/quote/{ticker}?apikey={api_key}"
-    mock_httpx.get(mock_url).mock(
+    respx_mock.get(mock_url).mock(
         return_value=httpx.Response(
             200,
             json=[
@@ -67,21 +67,21 @@ async def test_get_stock_quote_success(client: TestClient, mock_httpx: MockRoute
     assert data["price"] == 151.0
 
 
-async def test_get_stock_quote_not_found(client: TestClient, mock_httpx: MockRouter):
+async def test_get_stock_quote_not_found(client: TestClient, respx_mock: MockRouter):
     api_key = settings.FMP_API_KEY
     ticker = "UNKNOWN"
     mock_url = f"https://financialmodelingprep.com/api/v3/quote/{ticker}?apikey={api_key}"
-    mock_httpx.get(mock_url).mock(return_value=httpx.Response(200, json=[]))
+    respx_mock.get(mock_url).mock(return_value=httpx.Response(200, json=[]))
 
     response = client.get(f"/api/v1/stocks/{ticker}/quote")
     assert response.status_code == 404
     assert response.json() == {"detail": f"Stock with ticker '{ticker}' not found."}
 
 
-async def test_get_market_overview_service_unavailable(client: TestClient, mock_httpx: MockRouter):
+async def test_get_market_overview_service_unavailable(client: TestClient, respx_mock: MockRouter):
     api_key = settings.FMP_API_KEY
     mock_url = f"https://financialmodelingprep.com/api/v3/quote/SPY,QQQ,DIA?apikey={api_key}"
-    mock_httpx.get(mock_url).mock(return_value=httpx.Response(500))
+    respx_mock.get(mock_url).mock(return_value=httpx.Response(500))
 
     response = client.get("/api/v1/market-overview")
     assert response.status_code == 503

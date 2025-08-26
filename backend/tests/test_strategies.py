@@ -34,7 +34,7 @@ async def test_find_strategies():
     assert "Short Strangle (賣出勒式)" in result_names
     assert "Long Call (買入看漲期權)" not in result_names
 
-async def test_analyze_strategy_success(client: TestClient, mock_httpx: MockRouter):
+async def test_analyze_strategy_success(client: TestClient, respx_mock: MockRouter):
     # Define a simple long call strategy
     strategy_definition = {
         "legs": [
@@ -51,7 +51,7 @@ async def test_analyze_strategy_success(client: TestClient, mock_httpx: MockRout
     tickers_str = "O:SPY240920C00500000,SPY"
     mock_url = f"https://api.polygon.io/v3/snapshot?ticker.any_of={tickers_str}"
 
-    mock_httpx.get(mock_url).mock(
+    respx_mock.get(mock_url).mock(
         return_value=httpx.Response(
             200,
             json={
@@ -80,7 +80,7 @@ async def test_analyze_strategy_success(client: TestClient, mock_httpx: MockRout
     assert len(data["pl_chart_data"]) > 0
 
 
-async def test_analyze_strategy_api_error(client: TestClient, mock_httpx: MockRouter):
+async def test_analyze_strategy_api_error(client: TestClient, respx_mock: MockRouter):
     strategy_definition = {
         "legs": [{"option_ticker": "O:ANYTICKER", "action": "BUY", "quantity": 1}]
     }
@@ -90,7 +90,7 @@ async def test_analyze_strategy_api_error(client: TestClient, mock_httpx: MockRo
     mock_url = f"https://api.polygon.io/v3/snapshot?ticker.any_of={tickers_str}"
 
     # Mock a 404 response from the external API
-    mock_httpx.get(mock_url).mock(
+    respx_mock.get(mock_url).mock(
         return_value=httpx.Response(404, text="Not Found")
     )
 
