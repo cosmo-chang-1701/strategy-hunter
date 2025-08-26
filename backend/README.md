@@ -103,3 +103,19 @@ uvicorn app.main:app --reload
 
 After the server starts, you can open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser to view it.
 The interactive API documentation is available at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
+
+## Testing
+
+This project uses `pytest` for testing. The tests are located in the `tests/` directory and are designed to verify the functionality of each API endpoint.
+
+### Running Tests
+
+Before running the tests, make sure you have activated the virtual environment and installed all dependencies (including development dependencies).
+
+To run all tests, execute the following command in the `backend` directory:
+
+```bash
+pytest
+```
+
+This will automatically discover and run all test cases in the `tests/` directory.
