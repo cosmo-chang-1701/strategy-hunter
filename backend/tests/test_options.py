@@ -30,12 +30,12 @@ async def options_client_fixture(client: TestClient):
             del app.dependency_overrides[get_option_chain_service]
 
 
-async def test_get_option_expirations(options_client: TestClient, mock_httpx: MockRouter):
+async def test_get_option_expirations(options_client: TestClient, respx_mock: MockRouter):
     ticker = "AAPL"
     api_key = settings.POLYGON_API_KEY
     mock_url = f"https://api.polygon.io/v3/reference/options/contracts?underlying_ticker={ticker}&limit=1000"
 
-    mock_httpx.get(mock_url).mock(
+    respx_mock.get(mock_url).mock(
         return_value=httpx.Response(
             200,
             json={
@@ -56,20 +56,20 @@ async def test_get_option_expirations(options_client: TestClient, mock_httpx: Mo
     assert "2024-10-18" in data
 
 
-async def test_get_option_chain_success(options_client: TestClient, mock_httpx: MockRouter):
+async def test_get_option_chain_success(options_client: TestClient, respx_mock: MockRouter):
     ticker = "AAPL"
     expiration = "2024-09-20"
     api_key = settings.POLYGON_API_KEY
 
     # Mock for fetching underlying price
     price_url = f"https://api.polygon.io/v2/last/trade/{ticker}"
-    mock_httpx.get(price_url).mock(
+    respx_mock.get(price_url).mock(
         return_value=httpx.Response(200, json={"results": {"p": 150.0}})
     )
 
     # Mock for fetching option chain
     chain_url = f"https://api.polygon.io/v3/snapshot/options/{ticker}?expiration_date={expiration}&limit=1000"
-    mock_httpx.get(chain_url).mock(
+    respx_mock.get(chain_url).mock(
         return_value=httpx.Response(
             200,
             json={
@@ -95,13 +95,13 @@ async def test_get_option_chain_success(options_client: TestClient, mock_httpx: 
     assert data["calls"][0]["strike_price"] == 150.0
 
 
-async def test_get_option_chain_price_fetch_fails(options_client: TestClient, mock_httpx: MockRouter):
+async def test_get_option_chain_price_fetch_fails(options_client: TestClient, respx_mock: MockRouter):
     ticker = "FAIL"
     expiration = "2024-09-20"
 
     # Mock for fetching underlying price to fail
     price_url = f"https://api.polygon.io/v2/last/trade/{ticker}"
-    mock_httpx.get(price_url).mock(return_value=httpx.Response(500))
+    respx_mock.get(price_url).mock(return_value=httpx.Response(500))
 
     response = options_client.get(f"/api/v1/stocks/{ticker}/options?expiration_date={expiration}")
     assert response.status_code == 500

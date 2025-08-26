@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from enum import Enum
 from datetime import date
 from typing import List, Optional
@@ -34,8 +34,7 @@ class MarketIndex(BaseModel):
     change: float
     change_percent: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
     @classmethod
     def from_fmp_data(cls, data: dict):
@@ -63,8 +62,7 @@ class StockQuote(BaseModel):
     market_cap: int
     exchange: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
     @classmethod
     def from_fmp_data(cls, data: dict):
