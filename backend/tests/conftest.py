@@ -31,8 +31,9 @@ app.dependency_overrides[get_db_session] = override_get_session
 @pytest_asyncio.fixture(scope="function", name="client")
 # 4. 修正 fixture 的返回類型註解
 async def client_fixture() -> AsyncGenerator[TestClient, None]:
-    # 5. 在測試開始前建立所有資料表
+    # 5. 在測試開始前清除所有資料表後重新建立
     async with test_engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.drop_all)
         await conn.run_sync(SQLModel.metadata.create_all)
 
     # 6. 使用 `with` 陳述式來確保 TestClient 被正確關閉

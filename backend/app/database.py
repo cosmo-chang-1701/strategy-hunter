@@ -22,8 +22,6 @@ async def init_db():
     In a production environment, consider using a migration tool like Alembic.
     """
     async with engine.begin() as conn:
-        # This is for development, it will drop and recreate the tables
-        # await conn.run_sync(SQLModel.metadata.drop_all)
         await conn.run_sync(SQLModel.metadata.create_all)
 
 

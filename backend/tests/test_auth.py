@@ -5,7 +5,6 @@ from app.models import UserCreate
 pytestmark = pytest.mark.asyncio
 
 
-@pytest.mark.skip(reason="Skipping due to persistent test isolation issues")
 async def test_register_user(client: TestClient):
     response = client.post(
         "/api/v1/auth/register",
