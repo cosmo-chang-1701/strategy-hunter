@@ -71,7 +71,22 @@ For Windows, use `.venv\Scripts\activate` to activate.
 
 ### 3. Configure Environment Variables
 
-Copy or rename `.env.example` (if it exists) to `.env`, and fill in the necessary environment variables. If there is no example file, create the `.env` file manually.
+The application requires several environment variables to function properly. These include API keys for external services and configuration for authentication.
+
+First, copy the example environment file:
+
+```bash
+cp .env.example .env
+```
+
+Then, edit the `.env` file and fill in the required values:
+
+- **POLYGON_API_KEY**: Your API key from [Polygon.io](https://polygon.io/). This is required to fetch market data, stock quotes, and option chains.
+- **SECRET_KEY**: A secure, random string used for signing JWT tokens. Generate a strong key (at least 32 characters) for production use.
+- **ALGORITHM**: The JWT signing algorithm. Default is `HS256` (HMAC using SHA-256).
+- **ACCESS_TOKEN_EXPIRE_MINUTES**: How long JWT access tokens remain valid, in minutes. Default is 30 minutes.
+
+Example `.env` file:
 
 ```env
 # .env
@@ -88,6 +103,8 @@ ALGORITHM="HS256"
 # Access Token expiration time (in minutes)
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
+
+**Security Note**: Never commit the `.env` file to version control. It is already included in `.gitignore`.
 
 ### 5. Run Database Migrations
 
